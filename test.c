@@ -8,6 +8,7 @@
 #include "libft/libft.h"
 #include "get_next_line.h"
 #include <limits.h>
+#include <dirent.h>
 
 #define HISTSIZE 500
 
@@ -181,12 +182,98 @@ char **make_arr(t_env *env)
 //    return (1);
 //}
 
+int    print_err1(char *str)
+{
+    ft_putstr("cd: string not in pwd: ");
+    ft_putstr(str);
+    ft_putchar('\n');
+    return (1);
+}
+
+int     is_valid_path(char *path, char *name)
+{
+    DIR *dir;
+    if ((dir = opendir(path)) == NULL)
+    {
+        ft_putstr("cd: ");
+        if (access(path, F_OK) == -1)
+            ft_putstr("no such file or directory: ");
+        else if (access(path, R_OK) == -1)
+            ft_putstr("permission denied: ");
+        else
+            ft_putstr("not a directory: ");
+        ft_putstr(name);
+        ft_putchar('\n');
+        return (0);
+    }
+    closedir(dir);
+    return (1);
+}
+
+int     manage_cd(char **arr, t_env *env, int i)
+{
+    char buf[FILENAME_MAX];
+    char *path;
+
+    if (!ft_strcmp(arr[i], "cd"))
+    {
+        if (!arr[i + 1])
+        {
+            change_env("OLDPWD", env, ft_strdup(getcwd(buf, sizeof(buf))));
+            chdir(pull_env("HOME", env));
+        }
+        else {
+            if (arr[i + 2])
+                return (print_err1(arr[i + 1]));
+            //check if we have flag -L to get to the soft link directly, with lstat change our path
+            getcwd(buf, sizeof(buf));
+            //printf("current buf or path %s\n", buf);
+            //if we don't have OLDPWD set, and cd - is called, we must handle mistake right
+            if (ft_strcmp(arr[i + 1], "-"))
+            {
+                path = makepath(buf, arr[i + 1]);
+                if (is_valid_path(path, arr[i + 1]))
+                {
+                    change_env("OLDPWD", env, ft_strdup(buf));
+                    chdir(path);
+                }
+                else
+                    ft_strdel(&path);
+                //printf("now path we enter is %s\n", path);
+            } else
+            {
+                path = ft_strdup(pull_env("PWD", env));
+                chdir(pull_env("OLDPWD", env));
+                ft_putchar('~');
+                ft_putstr(pull_env("OLDPWD", env));
+                ft_putchar('\n');
+                change_env("OLDPWD", env, path);
+            }
+        }
+    }
+    change_env("PWD", env, NULL);
+        //maybe analyze mistakes here chdir
+        //change pwd only if cdir worked normally
+        //save previous path always in oldpwd
+        //use it with "-" arg
+}
+
+int     get_job_done(char **arr, t_env *env, int i, char *path)
+{
+    if (!ft_strcmp(arr[i], "cd"))
+    {
+        manage_cd(arr, env, i);
+        //return (1);
+    }
+    else
+        execve(path, arr, NULL);
+}
+
 int		manage_pid(char **arr, t_env *env, int i)
 {
 	pid_t child_pid;
 	char *path;
-	char buf[FILENAME_MAX];
-    pid_t wait_result;
+    //pid_t wait_result;
     int stat_loc;
 
 	if ((path = is_command(arr, env, i)) == NULL)
@@ -194,56 +281,14 @@ int		manage_pid(char **arr, t_env *env, int i)
 	//higher we must check - if we found command - that it we have rights to execute this command - we can use getcwd or stat
 	child_pid = fork();
 	if (child_pid == 0)
-	{
-		if (!ft_strcmp(arr[i], "cd"))
-		{
-			if (!arr[i + 1])
-			{
-			    ft_strdel(&path);
-//                getcwd(buf, sizeof(buf));
-//                change_env("OLDPWD", env, buf);
-                chdir(pull_env("HOME", env));
-//                change_env("PWD", env, NULL);
-			}
-			else {
-                if (arr[i + 2]) {
-                    ft_putstr("cd: string not in pwd: ");
-                    ft_putstr(arr[i + 1]);
-                    ft_putchar('\n');
-                    return (1);
-                }
-                //check if we have flag -L to get to the soft link directly, with lstat change our path
-                getcwd(buf, sizeof(buf));
-				printf("current buf or path %s\n", buf);
-                //if we don't have OLDPWD set, and cd - is called, we must handle mistake right
-                if (ft_strcmp(arr[i + 1], "-")) {
-                    change_env("OLDPWD", env, ft_strdup(buf));
-                    path = makepath(buf, arr[i + 1]);
-                    chdir(path);
-					printf("now path we enter is %s\n", path);
-                } else {
-                    path = ft_strdup(pull_env("PWD", env));
-                    chdir(pull_env("OLDPWD", env));
-                    change_env("OLDPWD", env, path);
-                }
-            }
-            change_env("PWD", env, NULL);
-		}
-			//maybe analyze mistakes here chdir
-			//change pwd only if cdir worked normally
-			//save previous path always in oldpwd
-			//use it with "-" arg
-		else
-		//arr[0] = ft_strjoin(path, arr[0]);
-		//printf("pwd %s\n arr[1] = %s\n", path, arr[1]);
-		//execve(arr[0], arr, NULL);
-            execve(path, arr, NULL);
-	}
+	    get_job_done(arr, env, i, path);
+	else if (child_pid < 0)
+	    ft_putstr("Fork failure\n");
 	else
 	    {
         ft_strdel(&path);
-        wait_result = waitpid(child_pid, &stat_loc, WUNTRACED);
-        //wait(&child_pid);
+        //waitpid(child_pid, &stat_loc, WUNTRACED);
+        wait(&child_pid);
     }
 	return (1);
 }
@@ -542,6 +587,29 @@ int     wanna_set(char *str, t_env *env)
     return (1);
 }
 
+void    echo_var(t_env *env, char *var)
+{
+
+}
+
+void    print_err2(t_env *env, char *str)
+{
+    ft_putstr(pull_env("SHELL", env));
+    ft_putstr(": ");
+    ft_putstr(str);
+    ft_putstr(": no arguments specified.\n");
+}
+
+void    print_err3(t_env *env, char *str, char *str1)
+{
+    ft_putstr(pull_env("SHELL", env));
+    ft_putstr(": ");
+    ft_putstr(str);
+    ft_putstr(": no matches found: ");
+    ft_putstr(str1);
+    ft_putchar('\n');
+}
+
 int     one_time_command(char **arr, t_env *env, char **hist)
 {
     if (!ft_strcmp(arr[0], "colorize"))
@@ -553,22 +621,13 @@ int     one_time_command(char **arr, t_env *env, char **hist)
     else if (!ft_strcmp(arr[0], "unsetenv"))
     {
         if (!arr[1])
-        {
-            ft_putstr(pull_env("SHELL", env));
-            ft_putstr(": ");
-            ft_putstr(arr[0]);
-            ft_putstr(": no arguments specified.\n");
-        }
+            print_err2(env, arr[0]);
         else if (!unset_env(env, arr[1]))
-        {
-            ft_putstr(pull_env("SHELL", env));
-            ft_putstr(": ");
-            ft_putstr(arr[0]);
-            ft_putstr(": no matches found: ");
-            ft_putstr(arr[1]);
-            ft_putchar('\n');
-        }
+            print_err3(env, arr[0], arr[1]);
     }
+    else if (!ft_strcmp(arr[0], "cd"))
+    else if (!ft_strcmp(arr[0], "echo") && arr[1] && arr[1][0] == '$' && arr[1][1])
+        echo_var(env, arr[1]);
     else
         return (0);
     return (1);
