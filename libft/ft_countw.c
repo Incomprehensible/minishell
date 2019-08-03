@@ -17,18 +17,18 @@ char	ft_countw(const char *str, char del)
 
 	count = 0;
 	flag = 0;
-	while (*str != '\0' && *str == del)
+	while (*str != '\0' && (*str == del || *str == '\t'))
 		str++;
 	while (*str != '\0')
 	{
-		while (*str && *str != del && (flag = 1))
+		while (*str && *str != del && *str != '\t' && (flag = 1))
 			str++;
-		if ((*str == del && flag) || (!(*str) && flag))
+		if (((*str == del || *str == '\t') && flag) || (!(*str) && flag))
 		{
 			count++;
 			flag = 0;
 		}
-		while (*str == del)
+		while (*str == del || *str == '\t')
 			str++;
 	}
 	return (count);

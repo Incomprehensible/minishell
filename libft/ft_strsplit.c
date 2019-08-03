@@ -25,9 +25,9 @@ static	int			ft_countch(const char *ss, char ch, int num)
 	ind = 0;
 	while (ss[j] != '\0' && !ind)
 	{
-		while (ss[j] == ch)
+		while (ss[j] == ch || ss[j] == '\t')
 			j++;
-		while (!(ss[j] == ch) && ss[j])
+		while (!(ss[j] == ch) && !(ss[j] == '\t') && ss[j])
 		{
 			if (n == num - 1 && (ind = 1))
 				len++;
@@ -54,13 +54,13 @@ static	char		*ft_splitter(const char *sss, char del, int n, int len)
 	len = 0;
 	while (!(flag2) && (*sss != '\0'))
 	{
-		while (*sss != '\0' && *sss == del)
+		while (*sss != '\0' && (*sss == del || *sss == '\t'))
 			sss++;
-		while (len != n && *sss && (*sss != del && (flag = 1)))
+		while (len != n && *sss && (*sss != del && *sss != '\t' && (flag = 1)))
 			sss++;
-		while (len == n && *sss && *sss != del && !flag && ++flag2)
+		while (len == n && *sss && *sss != del && *sss != '\t' && !flag && ++flag2)
 			*ptr++ = *sss++;
-		if (len != n && ((*sss == del && flag) || (!(*sss) && flag)))
+		if (len != n && (((*sss == del || *sss == '\t') && flag) || (!(*sss) && flag)))
 		{
 			len++;
 			flag = 0;

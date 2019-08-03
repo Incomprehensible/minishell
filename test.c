@@ -10,7 +10,7 @@
 #include <limits.h>
 #include <dirent.h>
 
-#define HISTSIZE 10
+#define HISTSIZE 50
 
 //create a linked list (maybe two-sides)
 //save all the vars there - just the ones that we have!
@@ -109,10 +109,12 @@ char	*is_command(char **arr, t_env *env, int ind)
 	//we may also nned to search env var with path to temporary files etc
 	//we may need to find some vars that we don't have in our envs but which may exist
 	paths = ft_strsplit(p, ':');
-	p = search_command(paths, arr[ind]);
+	if ((!access(arr[ind], 0) && !access(arr[ind], 1)))
+	    p = ft_strdup(arr[ind]);
+	else
+	    p = search_command(paths, arr[ind]);
 	if (!p)
 	    return ((char *)ft_arrmemdel((void **)paths));
-	//p = ft_strdup(&path[i]);
     ft_arrmemdel((void **)paths);
 	return (p);
 	//check each path - with opendir - readdir -closedir - stat to find command name and our executable rights
@@ -132,41 +134,41 @@ char    *makepath(char *buf, char *plus)
     return (path);
 }
 
-int     ft_envsize(t_env *env)
-{
-    int len;
+//int     ft_envsize(t_env *env)
+//{
+//    int len;
+//
+//    len = 0;
+//    while (env) {
+//        env = env->next;
+//        len++;
+//    }
+//    return (len);
+//}
 
-    len = 0;
-    while (env) {
-        env = env->next;
-        len++;
-    }
-    return (len);
-}
-
-char **make_arr(t_env *env)
-{
-    char **arr;
-    int i;
-    char *tmp;
-
-    i = ft_envsize(env);
-    arr = (char **)malloc(sizeof(char *) + i + 1);
-    i = 0;
-    while (env)
-    {
-        if (env->id)
-        {
-            tmp = ft_strjoin(env->name, "=");
-            arr[i] = ft_strjoin(tmp, env->value);
-            ft_strdel(&tmp);
-        }
-        i++;
-        env = env->next;
-    }
-    arr[i] = NULL;
-    return (arr);
-}
+//char **make_arr(t_env *env)
+//{
+//    char **arr;
+//    int i;
+//    char *tmp;
+//
+//    i = ft_envsize(env);
+//    arr = (char **)malloc(sizeof(char *) + i + 1);
+//    i = 0;
+//    while (env)
+//    {
+//        if (env->id)
+//        {
+//            tmp = ft_strjoin(env->name, "=");
+//            arr[i] = ft_strjoin(tmp, env->value);
+//            ft_strdel(&tmp);
+//        }
+//        i++;
+//        env = env->next;
+//    }
+//    arr[i] = NULL;
+//    return (arr);
+//}
 //
 //int     free_tmp(char **tmp)
 //{
@@ -193,9 +195,9 @@ int    print_err1(char *str)
 int     is_valid_path(char *path, char *name)
 {
     DIR *dir;
-    if ((dir = opendir(path)) == NULL)
+    if (!path || ((dir = opendir(path)) == NULL))
     {
-        if (name)
+        if (path && name)
         {
             ft_putstr("cd: ");
             if (access(path, F_OK) == -1)
@@ -213,6 +215,18 @@ int     is_valid_path(char *path, char *name)
     return (1);
 }
 
+//char *is_home(char *str, t_env *env)
+//{
+//    if (!ft_strcmp("$HOME", str))
+//    {
+//        while (env && ft_strcmp("HOME", env->name))
+//            env = env->next;
+//    }
+//    if (!env)
+//        return (NULL);
+//    return (ft_strdup(str));
+//}
+
 int     manage_cd(char **arr, t_env *env, int i)
 {
     char buf[FILENAME_MAX];
@@ -220,17 +234,16 @@ int     manage_cd(char **arr, t_env *env, int i)
 
     if (!ft_strcmp(arr[i], "cd"))
     {
-        if (!arr[i + 1])
+        if (!arr[i + 1] || !ft_strcmp("$HOME", arr[i + 1]))
         {
             change_env("OLDPWD", env, ft_strdup(getcwd(buf, sizeof(buf))));
-            chdir(pull_env("HOME", env));
+            pull_env("HOME", env) == NULL ? ft_putstr("$HOME isn't set.\n") : chdir(pull_env("HOME", env));
         }
         else {
             if (arr[i + 2])
                 return (print_err1(arr[i + 1]));
             //check if we have flag -L to get to the soft link directly, with lstat change our path
             getcwd(buf, sizeof(buf));
-            //printf("current buf or path %s\n", buf);
             //if we don't have OLDPWD set, and cd - is called, we must handle mistake right
             if (ft_strcmp(arr[i + 1], "-"))
             {
@@ -245,7 +258,7 @@ int     manage_cd(char **arr, t_env *env, int i)
                 }
                 else
                     ft_strdel(&path);
-                //printf("now path we enter is %s\n", path);
+                // path == NULL ? ft_putstr("$HOME isn't set.\n") : ft_strdel(&path);
             } else
             {
                 path = ft_strdup(pull_env("PWD", env));
@@ -275,10 +288,12 @@ int     manage_cd(char **arr, t_env *env, int i)
 //        execve(path, arr, NULL);
 //}
 
-void    print_err4(char *str)
+int    print_err4(char *str)
 {
     ft_putstr(str);
-    ft_putstr(": command couldn't be executed because an error occured.\n");
+    ft_putstr(": couldn't be executed: permission denied.\n");
+    //ft_putstr(": command couldn't be executed because an error occured.\n");
+    return (1);
 }
 
 int		manage_pid(char **arr, t_env *env, int i)
@@ -295,7 +310,7 @@ int		manage_pid(char **arr, t_env *env, int i)
 	if (child_pid == 0)
     {
         if ((execve(path, arr, NULL) == -1))
-            print_err4(arr[i]);
+            exit(print_err4(arr[i]));
     }
 	    //get_job_done(arr, env, i, path);
 	else if (child_pid < 0)
@@ -750,6 +765,29 @@ char	**create_hist(void)
 	return (hist);	
 }
 
+int     not_tabs(char **arr)
+{
+    int i;
+    int j;
+    int flag;
+
+    i = 0;
+    j = 0;
+    flag = 0;
+    while (arr[i])
+    {
+        while(arr[i][j])
+        {
+            if (arr[i][j] != ' ' && arr[i][j] != '\t')
+                flag = 1;
+            j++;
+        }
+        i++;
+        j = 0;
+    }
+    return (flag);
+}
+
 int	main(int argc, char **argv, char **env)
 {
 	char *str;
@@ -775,7 +813,8 @@ int	main(int argc, char **argv, char **env)
         if (*str)
         {
             arr = ft_strsplit(str, ' ');
-            get_command(arr, envr, history);
+            if (*arr && not_tabs(arr))
+                get_command(arr, envr, history);
             ft_arrmemdel((void **) arr);
         }
         ft_strdel(&str);
