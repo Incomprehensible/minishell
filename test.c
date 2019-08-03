@@ -10,7 +10,7 @@
 #include <limits.h>
 #include <dirent.h>
 
-#define HISTSIZE 500
+#define HISTSIZE 10
 
 //create a linked list (maybe two-sides)
 //save all the vars there - just the ones that we have!
@@ -195,15 +195,18 @@ int     is_valid_path(char *path, char *name)
     DIR *dir;
     if ((dir = opendir(path)) == NULL)
     {
-        ft_putstr("cd: ");
-        if (access(path, F_OK) == -1)
-            ft_putstr("no such file or directory: ");
-        else if (access(path, R_OK) == -1)
-            ft_putstr("permission denied: ");
-        else
-            ft_putstr("not a directory: ");
-        ft_putstr(name);
-        ft_putchar('\n');
+        if (name)
+        {
+            ft_putstr("cd: ");
+            if (access(path, F_OK) == -1)
+                ft_putstr("no such file or directory: ");
+            else if (access(path, R_OK) == -1)
+                ft_putstr("permission denied: ");
+            else
+                ft_putstr("not a directory: ");
+            ft_putstr(name);
+            ft_putchar('\n');
+        }
         return (0);
     }
     closedir(dir);
@@ -231,7 +234,10 @@ int     manage_cd(char **arr, t_env *env, int i)
             //if we don't have OLDPWD set, and cd - is called, we must handle mistake right
             if (ft_strcmp(arr[i + 1], "-"))
             {
-                path = makepath(buf, arr[i + 1]);
+                if (!is_valid_path(arr[i + 1], NULL))
+                    path = makepath(buf, arr[i + 1]);
+                else
+                    path = ft_strdup(arr[i + 1]);
                 if (is_valid_path(path, arr[i + 1]))
                 {
                     change_env("OLDPWD", env, ft_strdup(buf));
@@ -740,7 +746,7 @@ char	**create_hist(void)
 {
 	char **hist;
 	
-	hist = (char **)ft_memalloc(sizeof(char *) * HISTSIZE);
+	hist = (char **)ft_memalloc(sizeof(char *) * HISTSIZE + 1);
 	return (hist);	
 }
 
