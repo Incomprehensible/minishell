@@ -63,6 +63,8 @@ char    *search_command(char **paths, char *command)
     char *tmp;
 
     i = 0;
+    if (!paths)
+        return (NULL);
     tmp = ft_strjoin(paths[0], "/");
     full = ft_strjoin(tmp, command);
     free(tmp);
@@ -113,9 +115,10 @@ char	*is_command(char **arr, t_env *env, int ind)
 	    p = ft_strdup(arr[ind]);
 	else
 	    p = search_command(paths, arr[ind]);
-	if (!p)
-	    return ((char *)ft_arrmemdel((void **)paths));
-    ft_arrmemdel((void **)paths);
+//	if (!p)
+//	    return ((char *)ft_arrmemdel((void **)paths));
+    if (paths)
+        ft_arrmemdel((void **)paths);
 	return (p);
 	//check each path - with opendir - readdir -closedir - stat to find command name and our executable rights
 	//path could be forbidden - we must check what opendir returns. if we cant open the dir and it's the reason we can't execute command,
@@ -123,13 +126,26 @@ char	*is_command(char **arr, t_env *env, int ind)
 	//don't forget to close everything
 }
 
-char    *makepath(char *buf, char *plus)
+char    *makepath(char *buf, char *plus, t_env *env)
 {
     char *path;
     char *tmp;
 
-    tmp = ft_strjoin(buf, "/");
-    path = ft_strjoin(tmp, plus);
+    if (plus && *plus && plus[0] == '~' && plus[1] && plus[1] == '/')
+    {
+        while (env && ft_strcmp("HOME", env->name))
+            env = env->next;
+        if (!env)
+            return (NULL);
+        tmp = ft_strjoin(env->value, "/");
+        path = ft_strjoin(tmp, plus + 2);
+        printf("path for ~ is %s\n", path);
+    }
+    else
+    {
+        tmp = ft_strjoin(buf, "/");
+        path = ft_strjoin(tmp, plus);
+    }
     free(tmp);
     return (path);
 }
@@ -234,7 +250,7 @@ int     manage_cd(char **arr, t_env *env, int i)
 
     if (!ft_strcmp(arr[i], "cd"))
     {
-        if (!arr[i + 1] || !ft_strcmp("$HOME", arr[i + 1]))
+        if (!arr[i + 1] || !ft_strcmp("$HOME", arr[i + 1]) || !ft_strcmp(arr[i + 1], "~"))
         {
             change_env("OLDPWD", env, ft_strdup(getcwd(buf, sizeof(buf))));
             pull_env("HOME", env) == NULL ? ft_putstr("$HOME isn't set.\n") : chdir(pull_env("HOME", env));
@@ -248,7 +264,7 @@ int     manage_cd(char **arr, t_env *env, int i)
             if (ft_strcmp(arr[i + 1], "-"))
             {
                 if (!is_valid_path(arr[i + 1], NULL))
-                    path = makepath(buf, arr[i + 1]);
+                    path = makepath(buf, arr[i + 1], env);
                 else
                     path = ft_strdup(arr[i + 1]);
                 if (is_valid_path(path, arr[i + 1]))
