@@ -193,45 +193,46 @@ int		manage_pid(char **arr, t_env *env, int i)
 		return (0);
 	//higher we must check - if we found command - that it we have rights to execute this command - we can use getcwd or stat
 	child_pid = fork();
-	if (child_pid)
+	if (child_pid == 0)
 	{
 		if (!ft_strcmp(arr[i], "cd"))
 		{
 			if (!arr[i + 1])
 			{
-                arr[i + 1] = pull_env("HOME", env);
-                if (arr[i + 2])
-                {
+			    ft_strdel(&path);
+//                getcwd(buf, sizeof(buf));
+//                change_env("OLDPWD", env, buf);
+                chdir(pull_env("HOME", env));
+//                change_env("PWD", env, NULL);
+			}
+			else {
+                if (arr[i + 2]) {
                     ft_putstr("cd: string not in pwd: ");
                     ft_putstr(arr[i + 1]);
                     ft_putchar('\n');
-                } else
-                    chdir(arr[i + 1]);
-			}
-			else {
-                //char *tmp = arr[0];
-                //arr[1] = ft_strjoin("./", arr[1]);
+                    return (1);
+                }
                 //check if we have flag -L to get to the soft link directly, with lstat change our path
                 getcwd(buf, sizeof(buf));
-                change_env("OLDPWD", env, buf);
+				printf("current buf or path %s\n", buf);
                 //if we don't have OLDPWD set, and cd - is called, we must handle mistake right
-                if (ft_strcmp(arr[i + 1], "-"))
-                {
+                if (ft_strcmp(arr[i + 1], "-")) {
+                    change_env("OLDPWD", env, ft_strdup(buf));
                     path = makepath(buf, arr[i + 1]);
                     chdir(path);
-                    change_env("PWD", env, NULL);
-                    //ft_strdel(&path);
+					printf("now path we enter is %s\n", path);
                 } else {
+                    path = ft_strdup(pull_env("PWD", env));
                     chdir(pull_env("OLDPWD", env));
-                    change_env("OLDPWD", env, pull_env("PWD", env));
-                    change_env("PWD", env, NULL);
+                    change_env("OLDPWD", env, path);
                 }
             }
+            change_env("PWD", env, NULL);
+		}
 			//maybe analyze mistakes here chdir
 			//change pwd only if cdir worked normally
 			//save previous path always in oldpwd
 			//use it with "-" arg
-		}
 		else
 		//arr[0] = ft_strjoin(path, arr[0]);
 		//printf("pwd %s\n arr[1] = %s\n", path, arr[1]);
