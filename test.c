@@ -258,15 +258,21 @@ int     manage_cd(char **arr, t_env *env, int i)
         //use it with "-" arg
 }
 
-int     get_job_done(char **arr, t_env *env, int i, char *path)
+//int     get_job_done(char **arr, t_env *env, int i, char *path)
+//{
+//    if (!ft_strcmp(arr[i], "cd"))
+//    {
+//        manage_cd(arr, env, i);
+//        //return (1);
+//    }
+//    else
+//        execve(path, arr, NULL);
+//}
+
+void    print_err4(char *str)
 {
-    if (!ft_strcmp(arr[i], "cd"))
-    {
-        manage_cd(arr, env, i);
-        //return (1);
-    }
-    else
-        execve(path, arr, NULL);
+    ft_putstr(str);
+    ft_putstr(": command couldn't be executed because an error occured.\n");
 }
 
 int		manage_pid(char **arr, t_env *env, int i)
@@ -281,7 +287,11 @@ int		manage_pid(char **arr, t_env *env, int i)
 	//higher we must check - if we found command - that it we have rights to execute this command - we can use getcwd or stat
 	child_pid = fork();
 	if (child_pid == 0)
-	    get_job_done(arr, env, i, path);
+    {
+        if ((execve(path, arr, NULL) == -1))
+            print_err4(arr[i]);
+    }
+	    //get_job_done(arr, env, i, path);
 	else if (child_pid < 0)
 	    ft_putstr("Fork failure\n");
 	else
@@ -589,7 +599,14 @@ int     wanna_set(char *str, t_env *env)
 
 void    echo_var(t_env *env, char *var)
 {
+    char *str;
 
+    str = var + 1;
+    while (env && ft_strcmp(env->name, str))
+        env = env->next;
+    if (env)
+        ft_putstr(env->value);
+    write(1, "\n", 1);
 }
 
 void    print_err2(t_env *env, char *str)
@@ -625,7 +642,6 @@ int     one_time_command(char **arr, t_env *env, char **hist)
         else if (!unset_env(env, arr[1]))
             print_err3(env, arr[0], arr[1]);
     }
-    else if (!ft_strcmp(arr[0], "cd"))
     else if (!ft_strcmp(arr[0], "echo") && arr[1] && arr[1][0] == '$' && arr[1][1])
         echo_var(env, arr[1]);
     else
@@ -646,7 +662,9 @@ void		get_command(char **arr, t_env *env, char **hist)
         set_env(env, arr);
         i++;
     }
-	if (arr[i] && !manage_pid(arr, env, i))
+    if (arr[i] && !ft_strcmp(arr[i], "cd"))
+        manage_cd(arr, env, i);
+	else if (arr[i] && !manage_pid(arr, env, i))
 	{
 		ft_putstr("kek: command not found: ");
 		ft_putstr(arr[0]);
