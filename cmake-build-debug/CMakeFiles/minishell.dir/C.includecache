@@ -1,0 +1,40 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/bomanyte/minishell/get_next_line.h
+
+/Users/bomanyte/minishell/libft/libft.h
+stdlib.h
+-
+string.h
+-
+unistd.h
+-
+
+/Users/bomanyte/minishell/test.c
+stdlib.h
+-
+unistd.h
+-
+string.h
+-
+stdio.h
+-
+sys/wait.h
+-
+readline/readline.h
+-
+readline/history.h
+-
+libft/libft.h
+/Users/bomanyte/minishell/libft/libft.h
+get_next_line.h
+/Users/bomanyte/minishell/get_next_line.h
+limits.h
+-
+

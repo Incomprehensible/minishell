@@ -186,12 +186,14 @@ int		manage_pid(char **arr, t_env *env, int i)
 	pid_t child_pid;
 	char *path;
 	char buf[FILENAME_MAX];
+    pid_t wait_result;
+    int stat_loc;
 
 	if ((path = is_command(arr, env, i)) == NULL)
 		return (0);
 	//higher we must check - if we found command - that it we have rights to execute this command - we can use getcwd or stat
 	child_pid = fork();
-	if (child_pid == 0 || child_pid)
+	if (child_pid)
 	{
 		if (!ft_strcmp(arr[i], "cd"))
 		{
@@ -203,29 +205,27 @@ int		manage_pid(char **arr, t_env *env, int i)
                     ft_putstr("cd: string not in pwd: ");
                     ft_putstr(arr[i + 1]);
                     ft_putchar('\n');
-                    return (1);
+                } else
+                    chdir(arr[i + 1]);
+			}
+			else {
+                //char *tmp = arr[0];
+                //arr[1] = ft_strjoin("./", arr[1]);
+                //check if we have flag -L to get to the soft link directly, with lstat change our path
+                getcwd(buf, sizeof(buf));
+                change_env("OLDPWD", env, buf);
+                //if we don't have OLDPWD set, and cd - is called, we must handle mistake right
+                if (ft_strcmp(arr[i + 1], "-"))
+                {
+                    path = makepath(buf, arr[i + 1]);
+                    chdir(path);
+                    change_env("PWD", env, NULL);
+                    //ft_strdel(&path);
+                } else {
+                    chdir(pull_env("OLDPWD", env));
+                    change_env("OLDPWD", env, pull_env("PWD", env));
+                    change_env("PWD", env, NULL);
                 }
-            }
-			//char *tmp = arr[0];
-			//arr[1] = ft_strjoin("./", arr[1]);
-			//check if we have flag -L to get to the soft link directly, with lstat change our path
-			getcwd(buf, sizeof(buf));
-			change_env("OLDPWD", env, buf);
-			//if we don't have OLDPWD set, and cd - is called, we must handle mistake right
-			if (ft_strcmp(arr[i + 1], "-"))
-            {
-			    path = makepath(buf, arr[i + 1]);
-//                path = ft_strjoin(buf, "/");
-//                path = ft_strjoin(buf, arr[i + 1]);
-                chdir(path);
-                change_env("PWD", env, NULL);
-                ft_strdel(&path);
-            }
-			else
-			    {
-			    chdir(pull_env("OLDPWD", env));
-                change_env("OLDPWD", env, pull_env("PWD", env));
-                change_env("PWD", env, NULL);
             }
 			//maybe analyze mistakes here chdir
 			//change pwd only if cdir worked normally
@@ -238,8 +238,12 @@ int		manage_pid(char **arr, t_env *env, int i)
 		//execve(arr[0], arr, NULL);
             execve(path, arr, NULL);
 	}
-	//waitpid(child_pid);
-	wait(&child_pid);
+	else
+	    {
+        ft_strdel(&path);
+        wait_result = waitpid(child_pid, &stat_loc, WUNTRACED);
+        //wait(&child_pid);
+    }
 	return (1);
 }
 
