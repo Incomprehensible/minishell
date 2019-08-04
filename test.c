@@ -58,77 +58,6 @@ char	*pull_env(char *var, t_env *env)
 	return (env->value);
 }
 
-char    *search_command(char **paths, char *command)
-{
-    int i;
-    char *full;
-    char *tmp;
-
-    i = 0;
-    if (!paths)
-        return (NULL);
-    tmp = ft_strjoin(paths[0], "/");
-    full = ft_strjoin(tmp, command);
-    free(tmp);
-    while (paths[i] && (access(full, 0) || access(full, 1)))
-    {
-        free(full);
-        tmp = ft_strjoin(paths[i], "/");
-        full = ft_strjoin(tmp, command);
-        free(tmp);
-        i++;
-    }
-    if (!paths[i])
-    {
-        free(full);
-        return (NULL);
-    }
-    return (full);
-}
-
-//while setting variables check if 1st symbol is a letter - or throw not valid identifier mistake
-//make sure we set variables with just var=value and export var=value (maybe execute export thing, but update your
-//data structure as well
-char	*is_command(char **arr, t_env *env, int ind)
-{
-	char **paths;
-	char path[PATH_MAX];
-    char *p;
-
-    if (arr[ind][0] == '.' && arr[ind][1] == '/')
-    {
-        getcwd(path, sizeof(path));
-        p = ft_strjoin(path, arr[0]);
-        if (!access(p, 0)) {
-            if (!access(p, 1))
-                return (p);
-            else {
-                free(p);
-                ft_putstr(arr[ind]);
-                ft_putstr(": access denied\n");
-                return (0);
-            }
-        }
-    }
-	p = pull_env("PATH", env);
-	//we may also nned to search env var with path to temporary files etc
-	//we may need to find some vars that we don't have in our envs but which may exist
-	paths = ft_strsplit(p, ':');
-	if ((!access(arr[ind], 0) && !access(arr[ind], 1)))
-	    p = ft_strdup(arr[ind]);
-	else
-	    p = search_command(paths, arr[ind]);
-//	if (!p)
-//	    return ((char *)ft_arrmemdel((void **)paths));
-    if (paths)
-        ft_arrmemdel((void **)paths);
-	return (p);
-	//check each path - with opendir - readdir -closedir - stat to find command name and our executable rights
-	//path could be forbidden - we must check what opendir returns. if we cant open the dir and it's the reason we can't execute command,
-	//we first write that path is forbidden and then that command not found
-	//don't forget to close everything
-}
-
 char    *makepath(char *buf, char *plus, t_env *env)
 {
     char *path;
@@ -151,6 +80,84 @@ char    *makepath(char *buf, char *plus, t_env *env)
     }
     free(tmp);
     return (path);
+}
+
+char    *search_command(char **paths, char *command)
+{
+    int i;
+    char *full;
+    char *tmp;
+
+    i = 0;
+    if (!paths)
+        return (NULL);
+    tmp = ft_strjoin(paths[0], "/");
+    full = ft_strjoin(tmp, command);
+    free(tmp);
+    while (paths[i] && (access(full, 0)))
+    {
+        free(full);
+        tmp = ft_strjoin(paths[i], "/");
+        full = ft_strjoin(tmp, command);
+        free(tmp);
+        i++;
+    }
+    if (!paths[i])
+    {
+        free(full);
+        return (NULL);
+    }
+    if (access(full, 1))
+    {
+        ft_putstr(command);
+        ft_putstr(": access denied\n");
+        return ("\0");
+    }
+    return (full);
+}
+
+//while setting variables check if 1st symbol is a letter - or throw not valid identifier mistake
+//make sure we set variables with just var=value and export var=value (maybe execute export thing, but update your
+//data structure as well
+char	*is_command(char **arr, t_env *env, int ind)
+{
+	char **paths;
+	char path[PATH_MAX];
+    char *p;
+
+    if (arr[ind][0] == '.' && arr[ind][1] == '/')
+    {
+        getcwd(path, sizeof(path));
+        p = makepath(path, arr[0], NULL);
+//        p = ft_strjoin(path, arr[0]);
+        if (!access(p, 0)) {
+            if (!access(p, 1))
+                return (p);
+            else {
+                free(p);
+                ft_putstr(arr[ind]);
+                ft_putstr(": access denied\n");
+                return ("\0");
+            }
+        }
+    }
+	p = pull_env("PATH", env);
+	//we may also nned to search env var with path to temporary files etc
+	//we may need to find some vars that we don't have in our envs but which may exist
+	paths = ft_strsplit(p, ':');
+	if ((!access(arr[ind], 0) && !access(arr[ind], 1)))
+	    p = ft_strdup(arr[ind]);
+	else
+	    p = search_command(paths, arr[ind]);
+//	if (!p)
+//	    return ((char *)ft_arrmemdel((void **)paths));
+    if (paths)
+        ft_arrmemdel((void **)paths);
+	return (p);
+	//check each path - with opendir - readdir -closedir - stat to find command name and our executable rights
+	//path could be forbidden - we must check what opendir returns. if we cant open the dir and it's the reason we can't execute command,
+	//we first write that path is forbidden and then that command not found
+	//don't forget to close everything
 }
 
 //int     ft_envsize(t_env *env)
@@ -258,9 +265,7 @@ int     manage_cd(char **arr, t_env *env, int i)
         else {
             if (arr[i + 2])
                 return (print_err1(arr[i + 1]));
-            //check if we have flag -L to get to the soft link directly, with lstat change our path
             getcwd(buf, sizeof(buf));
-            //if we don't have OLDPWD set, and cd - is called, we must handle mistake right
             if (ft_strcmp(arr[i + 1], "-"))
             {
                 if (!is_valid_path(arr[i + 1], NULL))
@@ -287,10 +292,6 @@ int     manage_cd(char **arr, t_env *env, int i)
         }
     }
     change_env("PWD", env, NULL);
-        //maybe analyze mistakes here chdir
-        //change pwd only if cdir worked normally
-        //save previous path always in oldpwd
-        //use it with "-" arg
 }
 
 //int     get_job_done(char **arr, t_env *env, int i, char *path)
@@ -307,8 +308,7 @@ int     manage_cd(char **arr, t_env *env, int i)
 int    print_err4(char *str)
 {
     ft_putstr(str);
-    ft_putstr(": couldn't be executed: permission denied.\n");
-    //ft_putstr(": command couldn't be executed because an error occured.\n");
+    ft_putstr(": command couldn't be executed because an error occured.\n");
     return (1);
 }
 
@@ -318,7 +318,6 @@ void     sig_handlein(int sig)
     {
         write(1, "\n", 1);
         signal(SIGINT, sig_handlein);
-        //return ;
     }
 }
 
@@ -358,15 +357,11 @@ int		manage_pid(char **arr, t_env *env, int i)
 {
 	pid_t child_pid;
 	char *path;
-    //pid_t wait_result;
-    int stat_loc;
 
-    //signal(SIGINT, sig_handle);
-//    if (signal(SIGINT, sig_handle) == SIG_ERR)
-//        printf("\ncan't catch SIGINT\n");
     if ((path = is_command(arr, env, i)) == NULL)
 		return (0);
-	//higher we must check - if we found command - that it we have rights to execute this command - we can use getcwd or stat
+    if (!*path)
+        return (1);
 	child_pid = fork();
     signal(SIGINT, sig_handlein);
 	if (child_pid == 0)
@@ -374,13 +369,11 @@ int		manage_pid(char **arr, t_env *env, int i)
         if ((execve(path, arr, NULL) == -1))
             exit(print_err4(arr[i]));
     }
-	    //get_job_done(arr, env, i, path);
 	else if (child_pid < 0)
 	    ft_putstr("Fork failure\n");
 	else
 	    {
         ft_strdel(&path);
-        //waitpid(child_pid, &stat_loc, WUNTRACED);
         wait(&child_pid);
     }
 	return (1);
@@ -432,10 +425,10 @@ int		ft_add_history(char **hist, char *str, int i)
 
 int		colorize(char *str)
 {
-	static int i = 2;
+	static int i;
 	static int color;
 
-	if (!i)
+	if (i == 666)
 	{
 		color++;
 		if (color == 6)
@@ -451,6 +444,7 @@ int		colorize(char *str)
 		color = 1;
 		if (!i)
 		{
+		    i = 666;
 			ft_putstr("\033[36m");
 			return (1);
 		}
