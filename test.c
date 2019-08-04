@@ -9,7 +9,9 @@
 #include "get_next_line.h"
 #include <limits.h>
 #include <dirent.h>
+#include <signal.h>
 
+#define SIGINT 2
 #define HISTSIZE 50
 
 //create a linked list (maybe two-sides)
@@ -97,12 +99,13 @@ char	*is_command(char **arr, t_env *env, int ind)
     {
         getcwd(path, sizeof(path));
         p = ft_strjoin(path, arr[0]);
-        if (access(p, 0)) {
-            if (access(p, 1))
+        if (!access(p, 0)) {
+            if (!access(p, 1))
                 return (p);
             else {
                 free(p);
-                ft_putstr("kek: access denied\n");
+                ft_putstr(arr[ind]);
+                ft_putstr(": access denied\n");
                 return (0);
             }
         }
@@ -231,17 +234,14 @@ int     is_valid_path(char *path, char *name)
     return (1);
 }
 
-//char *is_home(char *str, t_env *env)
-//{
-//    if (!ft_strcmp("$HOME", str))
-//    {
-//        while (env && ft_strcmp("HOME", env->name))
-//            env = env->next;
-//    }
-//    if (!env)
-//        return (NULL);
-//    return (ft_strdup(str));
-//}
+t_env *is_ps1(t_env *env)
+{
+    while (env && ft_strcmp("PS1", env->name))
+        env = env->next;
+    if (!env)
+        return (NULL);
+    return (env);
+}
 
 int     manage_cd(char **arr, t_env *env, int i)
 {
@@ -312,6 +312,48 @@ int    print_err4(char *str)
     return (1);
 }
 
+void     sig_handlein(int sig)
+{
+    if (sig == SIGINT)
+    {
+        write(1, "\n", 1);
+        signal(SIGINT, sig_handlein);
+        //return ;
+    }
+}
+
+void    display_prompt(t_env *home)
+{
+//    static char buf[sizeof(home->value + 1)];
+    static char *buf;
+    static char c;
+
+    if (home != NULL)
+    {
+        buf = home->value;
+        ft_putstr(buf);
+        c = '\0';
+    }
+    else
+    {
+        if (c == '\0')
+            ft_putstr(buf);
+        else
+            ft_putstr("$> ");
+    }
+}
+
+void    sig_handleout(int sig)
+{
+    if (sig == SIGINT)
+    {
+        ft_putstr("\n");
+        display_prompt(NULL);
+        signal(SIGINT, sig_handleout);
+    }
+}
+
+
 int		manage_pid(char **arr, t_env *env, int i)
 {
 	pid_t child_pid;
@@ -319,10 +361,14 @@ int		manage_pid(char **arr, t_env *env, int i)
     //pid_t wait_result;
     int stat_loc;
 
-	if ((path = is_command(arr, env, i)) == NULL)
+    //signal(SIGINT, sig_handle);
+//    if (signal(SIGINT, sig_handle) == SIG_ERR)
+//        printf("\ncan't catch SIGINT\n");
+    if ((path = is_command(arr, env, i)) == NULL)
 		return (0);
 	//higher we must check - if we found command - that it we have rights to execute this command - we can use getcwd or stat
 	child_pid = fork();
+    signal(SIGINT, sig_handlein);
 	if (child_pid == 0)
     {
         if ((execve(path, arr, NULL) == -1))
@@ -365,7 +411,9 @@ int		manage_pid(char **arr, t_env *env, int i)
 
 int		ft_add_history(char **hist, char *str, int i)
 {
-	if (i < HISTSIZE)
+	if (!str || !*str)
+	    return (i);
+    if (i < HISTSIZE)
 		hist[i] = ft_strdup(str);
 	else
 	{
@@ -494,7 +542,7 @@ int    unset_env(t_env *env, char *var)
         tmp1 = env;
         env = env->next;
     }
-    if (env)
+    if (env && ft_strcmp(var, "PS1"))
     {
         tmp2 = env->next;
         free(env->name);
@@ -502,6 +550,14 @@ int    unset_env(t_env *env, char *var)
             free(env->value);
         free(env);
         tmp1->next = tmp2;
+        return (1);
+    }
+    else if (env && env->id)
+    {
+        if (env->value)
+            free(env->value);
+        env->value = ft_strdup("$> ");
+        env->id = 0x0;
         return (1);
     }
     return (0);
@@ -804,6 +860,24 @@ int     not_tabs(char **arr)
     return (flag);
 }
 
+int     ft_cleanall(t_env *env, char **history)
+{
+    t_env *tmp;
+
+    while (env)
+    {
+        tmp = env;
+        env = env->next;
+        ft_strdel(&tmp->name);
+        if (tmp->value)
+            ft_strdel(&tmp->value);
+        free(tmp);
+    }
+    ft_arrmemdel((void **)history);
+    history = NULL;
+    return (0);
+}
+
 int	main(int argc, char **argv, char **env)
 {
 	char *str;
@@ -818,7 +892,9 @@ int	main(int argc, char **argv, char **env)
 	history = create_hist();
 	while (1)
 	{
-        ft_putstr(pull_env("PS1", envr));
+        //ft_putstr(pull_env("PS1", envr));
+        display_prompt(is_ps1(envr));
+        signal(SIGINT, sig_handleout);
         i = get_next_line(0, &str);
         hist = ft_add_history(history, str, hist);
         if (i < 0)
@@ -835,6 +911,5 @@ int	main(int argc, char **argv, char **env)
         }
         ft_strdel(&str);
     }
-	//free everything here
-	return (0);
+	return (ft_cleanall(envr, history));
 }
