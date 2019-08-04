@@ -632,7 +632,7 @@ int     is_legit(char *arr, t_env *env)
         {
             ft_putstr(pull_env("PS1", env));
             print_err(flag, arr);
-            return (0);
+            return (1);
         }
         while (arr[j] && arr[j] != '=')
             j++;
@@ -643,7 +643,7 @@ int     is_legit(char *arr, t_env *env)
         {
             ft_putstr(pull_env("PS1", env));
             print_err(3, arr);
-            return (0);
+            return (1);
         }
     }
     return (1);
