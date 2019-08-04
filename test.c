@@ -12,7 +12,7 @@
 #include <signal.h>
 
 #define SIGINT 2
-#define HISTSIZE 10
+#define HISTSIZE 100
 
 typedef	struct	s_env
 {
@@ -424,16 +424,43 @@ int		colorize(char *str)
 	return (0);
 }
 
+static int		find_n_length(long long num)
+{
+    long long i;
+
+    i = 1;
+    while (num / 10 != 0)
+    {
+        num = num / 10;
+        i++;
+    }
+    return (i);
+}
+
 void	get_history(char **history)
 {
-	int i;
+	long long i;
+	long long j;
+	long long max;
 
 	i = 0;
 	while (history[i])
+        i++;
+	max = find_n_length(i);
+	i = 0;
+	while (history[i])
 	{
-		ft_putstr("   ");
+	    j = max;
+	    ft_putstr("   ");
 		ft_putnbr(i + 1);
-		ft_putstr(":  ");
+		ft_putstr(":");
+        if (find_n_length(i + 1) != max)
+        {
+            while (j--)
+                ft_putstr(" ");
+        }
+        else
+            ft_putstr(" ");
 		ft_putstr(history[i]);
 		write(1, "\n", 1);
 		i++;
