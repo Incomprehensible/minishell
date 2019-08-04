@@ -12,14 +12,8 @@
 #include <signal.h>
 
 #define SIGINT 2
-#define HISTSIZE 50
+#define HISTSIZE 10
 
-//create a linked list (maybe two-sides)
-//save all the vars there - just the ones that we have!
-//check if we need to look for commands in vars other than PATH
-//case in which we are given /fullpath/executable_script, check if we can just execve it
-//make possible to set another PS1 and change $> to PS1 in main
-//if we echo and variable isn't set or doesn't exist, we print \n only
 typedef	struct	s_env
 {
 	char *name;
@@ -48,9 +42,6 @@ void    change_env(char *var, t_env *env, char *new)
 
 char	*pull_env(char *var, t_env *env)
 {
-	//if we're looking for PATH and there may be other path vars set, we may just find them all together and join as the whole path with ':'
-	//thus we won't need to check other vars and stuff
-	//but maybe no maybe better check other vars separately to preserve memory
 	while (env && ft_strcmp(env->name, var) != 0)
 		env = env->next;
 	if (!env)
@@ -117,8 +108,6 @@ char    *search_command(char **paths, char *command)
 }
 
 //while setting variables check if 1st symbol is a letter - or throw not valid identifier mistake
-//make sure we set variables with just var=value and export var=value (maybe execute export thing, but update your
-//data structure as well
 char	*is_command(char **arr, t_env *env, int ind)
 {
 	char **paths;
@@ -129,7 +118,6 @@ char	*is_command(char **arr, t_env *env, int ind)
     {
         getcwd(path, sizeof(path));
         p = makepath(path, arr[0], NULL);
-//        p = ft_strjoin(path, arr[0]);
         if (!access(p, 0)) {
             if (!access(p, 1))
                 return (p);
@@ -142,22 +130,14 @@ char	*is_command(char **arr, t_env *env, int ind)
         }
     }
 	p = pull_env("PATH", env);
-	//we may also nned to search env var with path to temporary files etc
-	//we may need to find some vars that we don't have in our envs but which may exist
 	paths = ft_strsplit(p, ':');
 	if ((!access(arr[ind], 0) && !access(arr[ind], 1)))
 	    p = ft_strdup(arr[ind]);
 	else
 	    p = search_command(paths, arr[ind]);
-//	if (!p)
-//	    return ((char *)ft_arrmemdel((void **)paths));
     if (paths)
         ft_arrmemdel((void **)paths);
 	return (p);
-	//check each path - with opendir - readdir -closedir - stat to find command name and our executable rights
-	//path could be forbidden - we must check what opendir returns. if we cant open the dir and it's the reason we can't execute command,
-	//we first write that path is forbidden and then that command not found
-	//don't forget to close everything
 }
 
 //int     ft_envsize(t_env *env)
@@ -279,11 +259,14 @@ int     manage_cd(char **arr, t_env *env, int i)
                 }
                 else
                     ft_strdel(&path);
-                // path == NULL ? ft_putstr("$HOME isn't set.\n") : ft_strdel(&path);
             } else
             {
+                if (chdir(pull_env("OLDPWD", env)))
+                {
+                    ft_putstr("$OLDPWD isn't set.\n");
+                    return (1);
+                }
                 path = ft_strdup(pull_env("PWD", env));
-                chdir(pull_env("OLDPWD", env));
                 ft_putchar('~');
                 ft_putstr(pull_env("OLDPWD", env));
                 ft_putchar('\n');
@@ -293,17 +276,6 @@ int     manage_cd(char **arr, t_env *env, int i)
     }
     change_env("PWD", env, NULL);
 }
-
-//int     get_job_done(char **arr, t_env *env, int i, char *path)
-//{
-//    if (!ft_strcmp(arr[i], "cd"))
-//    {
-//        manage_cd(arr, env, i);
-//        //return (1);
-//    }
-//    else
-//        execve(path, arr, NULL);
-//}
 
 int    print_err4(char *str)
 {
@@ -626,7 +598,7 @@ void    print_err(int flag, char *error)
     else if (flag == 2)
     {
         ft_putstr(": parse error near '");
-        while (*error != '=')
+        while (*error && *error != '=')
         {
             ft_putchar(*error);
             error++;
@@ -635,9 +607,9 @@ void    print_err(int flag, char *error)
     }
     else if (flag == 3)
     {
-        while (*error != '=')
+        while (*error && *error != '=')
             error++;
-        while (*error == '=')
+        while (*error && *error == '=')
             error++;
         while (*error)
         {
@@ -714,6 +686,76 @@ void    print_err3(t_env *env, char *str, char *str1)
     ft_putchar('\n');
 }
 
+void    echo_str(char *start, char *finish)
+{
+    while (start != finish)
+    {
+        ft_putchar(*start);
+        start++;
+    }
+}
+
+int     echo_that(char *str)
+{
+    int words;
+    int brackets;
+    int i;
+
+    i = 0;
+    brackets = 0;
+    if (!str || !*str)
+        return (0);
+    words = ft_countw(str, ' ');
+   while (str[i])
+   {
+       if (*str == '\'' || *str == '\"')
+           brackets++;
+       i++;
+   }
+   if (brackets == words * 2)
+       return (0);
+   while (*str)
+   {
+       if (*str != '\'' && *str != '\"')
+           ft_putchar(*str);
+       str++;
+   }
+   return (1);
+}
+
+void    echo_this(char **arr)
+{
+    int i;
+    char *start;
+    char *finish;
+
+    i = 1;
+    if (arr[1])
+    {
+        while (arr[i])
+        {
+            if (!echo_that(arr[i])) {
+                start = NULL;
+                finish = NULL;
+                if ((arr[i][0] == '\'' || arr[i][0] == '\"') && arr[i][1])
+                    start = &arr[i][1];
+                if ((ft_strlen(arr[i]) > 2 &&
+                     (arr[i][ft_strlen(arr[i]) - 1] == '\'' || arr[i][ft_strlen(arr[i]) - 1] == '\"')))
+                    finish = &arr[i][ft_strlen(arr[i]) - 1];
+                if (!start || !finish) {
+                    start = &arr[i][0];
+                    finish = &arr[i][ft_strlen(arr[i])];
+                }
+                echo_str(start, finish);
+            }
+            i++;
+            if (arr[i])
+                write(1, " ", 1);
+        }
+    }
+    write(1, "\n", 1);
+}
+
 int     one_time_command(char **arr, t_env *env, char **hist)
 {
     if (!ft_strcmp(arr[0], "colorize"))
@@ -729,8 +771,13 @@ int     one_time_command(char **arr, t_env *env, char **hist)
         else if (!unset_env(env, arr[1]))
             print_err3(env, arr[0], arr[1]);
     }
-    else if (!ft_strcmp(arr[0], "echo") && arr[1] && arr[1][0] == '$' && arr[1][1])
-        echo_var(env, arr[1]);
+    else if (!ft_strcmp(arr[0], "echo"))
+    {
+        if (arr[1] && arr[1][0] == '$' && arr[1][1])
+            echo_var(env, arr[1]);
+        else
+            echo_this(arr);
+    }
     else
         return (0);
     return (1);
@@ -854,7 +901,7 @@ int     not_tabs(char **arr)
     return (flag);
 }
 
-int     ft_cleanall(t_env *env, char **history)
+int     ft_cleanall(t_env *env, char **history, char *line)
 {
     t_env *tmp;
 
@@ -867,8 +914,9 @@ int     ft_cleanall(t_env *env, char **history)
             ft_strdel(&tmp->value);
         free(tmp);
     }
+    if (line)
+        ft_strdel(&line);
     ft_arrmemdel((void **)history);
-    history = NULL;
     return (0);
 }
 
@@ -876,7 +924,6 @@ int	main(int argc, char **argv, char **env)
 {
 	char *str;
 	char **arr;
-	int i;
 	int hist;
 	char **history;
 	t_env *envr;
@@ -886,13 +933,11 @@ int	main(int argc, char **argv, char **env)
 	history = create_hist();
 	while (1)
 	{
-        //ft_putstr(pull_env("PS1", envr));
         display_prompt(is_ps1(envr));
         signal(SIGINT, sig_handleout);
-        i = get_next_line(0, &str);
-        hist = ft_add_history(history, str, hist);
-        if (i < 0)
+        if (get_next_line(0, &str) < 0)
             write(1, "Input error\n", 12);
+        hist = ft_add_history(history, str, hist);
         if (!ft_strcmp(str, "exit"))
             break ;
         colorize(str);
@@ -905,5 +950,5 @@ int	main(int argc, char **argv, char **env)
         }
         ft_strdel(&str);
     }
-	return (ft_cleanall(envr, history));
+	return (ft_cleanall(envr, history, str));
 }
