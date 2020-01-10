@@ -6,7 +6,7 @@
 /*   By: bomanyte <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2019/04/12 21:38:14 by bomanyte          #+#    #+#             */
-/*   Updated: 2019/04/23 16:15:49 by bomanyte         ###   ########.fr       */
+/*   Updated: 2019/08/05 08:14:28 by bomanyte         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,32 +41,32 @@ static	int			ft_countch(const char *ss, char ch, int num)
 	return (len);
 }
 
-static	char		*ft_splitter(const char *sss, char del, int n, int len)
+static	char		*ft_splitter(const char *s, char d, int n, int l)
 {
 	char	*ptr;
-	int		flag;
-	int		flag2;
+	int		f;
+	int		k;
 
-	flag = 0;
-	flag2 = 0;
-	if (!(ptr = (char *)malloc(sizeof(char) * (len + 1))))
+	f = 0;
+	k = 0;
+	if (!(ptr = (char *)malloc(sizeof(char) * (l + 1))))
 		return (0);
-	len = 0;
-	while (!(flag2) && (*sss != '\0'))
+	l = 0;
+	while (!(k) && (*s != '\0'))
 	{
-		while (*sss != '\0' && (*sss == del || *sss == '\t'))
-			sss++;
-		while (len != n && *sss && (*sss != del && *sss != '\t' && (flag = 1)))
-			sss++;
-		while (len == n && *sss && *sss != del && *sss != '\t' && !flag && ++flag2)
-			*ptr++ = *sss++;
-		if (len != n && (((*sss == del || *sss == '\t') && flag) || (!(*sss) && flag)))
+		while (*s != '\0' && (*s == d || *s == '\t'))
+			s++;
+		while (l != n && *s && (*s != d && *s != '\t' && (f = 1)))
+			s++;
+		while (l == n && *s && *s != d && *s != '\t' && !f && ++k)
+			*ptr++ = *s++;
+		if (l != n && (((*s == d || *s == '\t') && f) || (!(*s) && f)))
 		{
-			len++;
-			flag = 0;
+			l++;
+			f = 0;
 		}
 	}
-	return (ptr - flag2);
+	return (ptr - k);
 }
 
 char				**ft_strsplit(const char *s, char c)

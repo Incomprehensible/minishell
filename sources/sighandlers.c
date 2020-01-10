@@ -1,27 +1,32 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   ft_strcmp.c                                        :+:      :+:    :+:   */
+/*   sighandlers.c                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: bomanyte <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2019/04/10 09:41:28 by bomanyte          #+#    #+#             */
-/*   Updated: 2019/04/21 19:52:20 by bomanyte         ###   ########.fr       */
+/*   Created: 2019/08/05 00:52:58 by bomanyte          #+#    #+#             */
+/*   Updated: 2019/08/05 07:12:42 by bomanyte         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "libft.h"
+#include "minishell.h"
 
-int		ft_strcmp(const char *s1, const char *s2)
+void	sig_handlein(int sig)
 {
-	if (!s1 || !s2)
-		return (1);
-	while (*s1 == *s2 && *s1 != '\0')
+	if (sig == SIGINT)
 	{
-		s1++;
-		s2++;
+		write(1, "\n", 1);
+		signal(SIGINT, sig_handlein);
 	}
-	if (*s1 == *s2)
-		return (0);
-	return ((unsigned char)*s1 - (unsigned char)*s2);
+}
+
+void	sig_handleout(int sig)
+{
+	if (sig == SIGINT)
+	{
+		ft_putstr("\n");
+		display_prompt(NULL);
+		signal(SIGINT, sig_handleout);
+	}
 }

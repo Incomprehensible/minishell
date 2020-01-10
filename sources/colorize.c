@@ -1,27 +1,42 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   ft_strcmp.c                                        :+:      :+:    :+:   */
+/*   colorize.c                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: bomanyte <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2019/04/10 09:41:28 by bomanyte          #+#    #+#             */
-/*   Updated: 2019/04/21 19:52:20 by bomanyte         ###   ########.fr       */
+/*   Created: 2019/08/05 07:28:18 by bomanyte          #+#    #+#             */
+/*   Updated: 2019/08/05 07:28:21 by bomanyte         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "libft.h"
+#include "minishell.h"
 
-int		ft_strcmp(const char *s1, const char *s2)
+int		colorize(char *str)
 {
-	if (!s1 || !s2)
-		return (1);
-	while (*s1 == *s2 && *s1 != '\0')
+	static int i;
+	static int color;
+
+	if (i == 666)
 	{
-		s1++;
-		s2++;
+		color++;
+		if (color == 6)
+			color = 1;
+		ft_putstr("\033[");
+		ft_putnbr(30 + color);
+		ft_putstr("m");
+		return (1);
 	}
-	if (*s1 == *s2)
-		return (0);
-	return ((unsigned char)*s1 - (unsigned char)*s2);
+	else
+	{
+		i = ft_strcmp(str, "colorize");
+		color = 1;
+		if (!i)
+		{
+			i = 666;
+			ft_putstr("\033[36m");
+			return (1);
+		}
+	}
+	return (0);
 }
